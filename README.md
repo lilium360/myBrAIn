@@ -32,7 +32,7 @@ The system is divided into three main components:
 
 1.  **Clone the repository**:
     ```bash
-    git clone <repository-url>
+    git clone https://github.com/lilium360/myBrAIn.git
     cd mybrain
     ```
 
@@ -75,7 +75,7 @@ To enable myBrAIn, you need to add the configuration to the MCP servers JSON fil
         "mybrain": {
             "command": "python",
             "args": [
-                "D:/Documenti/Augment Project/mybrain/server.py"
+                "/ABSOLUTE/PATH/TO/mybrain/server.py"
             ]
         }
     }
