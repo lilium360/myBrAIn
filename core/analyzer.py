@@ -8,7 +8,7 @@ from core import config
 class ProjectAnalyzer:
     def __init__(self):
         self.ignored_dirs = config.IGNORED_DIRS
-        self.allowed_extensions = config.ALLOWED_EXTENSIONS
+        self.binary_extensions = config.BINARY_EXTENSIONS
 
     def normalize_path(self, path: str) -> Path:
         """Resolve and validate the given path."""
@@ -52,7 +52,7 @@ class ProjectAnalyzer:
             sub_indent = "  " * (level + 1)
             for f in files:
                 file_path = curr_root / f
-                if file_path.suffix.lower() in self.allowed_extensions:
+                if file_path.suffix.lower() not in self.binary_extensions:
                     if file_path.stat().st_size <= config.MAX_FILE_SIZE_BYTES:
                         tree_lines.append(f"{sub_indent}{f}")
                         count += 1

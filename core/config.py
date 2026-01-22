@@ -22,4 +22,17 @@ IGNORED_DIRS = {
     "dist", "build", ".idea", ".vscode"
 }
 
-ALLOWED_EXTENSIONS = {".py", ".js", ".ts", ".json", ".md"}
+# Known binary or irrelevant extensions to ignore for code analysis
+BINARY_EXTENSIONS = {
+    # Images & Media
+    ".png", ".jpg", ".jpeg", ".gif", ".ico", ".svg", ".webp",
+    ".mp3", ".mp4", ".wav", ".avi", ".mov",
+    # Archives & Executables
+    ".zip", ".tar", ".gz", ".rar", ".7z",
+    ".exe", ".dll", ".so", ".bin", ".iso",
+    # Binary Docs & Fonts
+    ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx",
+    ".ttf", ".otf", ".woff", ".woff2",
+    # Databases & Cache
+    ".sqlite", ".db", ".pyc", ".class"
+}
