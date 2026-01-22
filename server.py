@@ -40,6 +40,7 @@ def initialize_workbase(root_path: str) -> dict:
         # Save context to DB
         metadata = {
             "workbase_id": workbase_id,
+            "project_name": path.name,
             "type": "context",
             "category": "project_structure",
             "source": "agent"

@@ -40,7 +40,7 @@ class BrainDB:
         metadata.setdefault("created_at", datetime.datetime.now(datetime.timezone.utc).isoformat())
         metadata.setdefault("schema_version", config.DB_SCHEMA_VERSION)
         
-        self.collection.add(
+        self.collection.upsert(
             ids=[memory_id],
             documents=[text],
             metadatas=[metadata]
