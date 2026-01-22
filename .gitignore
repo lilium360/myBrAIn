@@ -1,0 +1,17 @@
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+mybrain_data/
+*.sqlite
+*.sqlite-journal
+.idea/
+.vscode/
+dist/
+build/
+.agent/
+brain/
+task.md
+implementation_plan.md
+walkthrough.md
