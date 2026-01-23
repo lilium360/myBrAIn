@@ -55,87 +55,59 @@ The system is divided into three main components:
 
 ---
 
-## 🚀 Usage Guide
+## 🐳 Docker Deployment
 
-### A. Launching the Admin Dashboard
-To graphically manage the database and visualize insights:
-*   **Main Command**: `streamlit run admin.py`
-*   **Windows Troubleshooting**: If the command above is not recognized, use: `python -m streamlit run admin.py`
-*   **Mac/Linux Troubleshooting**: `python3 -m streamlit run admin.py`
+The easiest way to run **myBrAIn** is using Docker Compose. This starts both the Streamlit Admin UI and prepares the MCP server environment.
 
-### B. Integration in Google Antigravity / Cursor
-To enable myBrAIn, you need to add the configuration to the MCP servers JSON file (`mcpServers`).
+### Quick Start
+```bash
+# 1. Clone the repository (if not already done)
+git clone https://github.com/Labontese/myBrAIn.git
+cd myBrAIn
 
-> [!IMPORTANT]
-> In the JSON block below, the path in `args` must be **ABSOLUTE** and point to the `server.py` file within your project folder.
+# 2. Prepare environment (optional)
+cp .env.example .env
+
+# 3. Spin up the ecosystem
+docker compose up -d
+```
+
+### Accessing the Dashboard
+The Admin UI will be available at: **[http://localhost:8501](http://localhost:8501)**
+
+### Integration in IDEs (Cursor, VS Code + Antigravity)
+To use the MCP server from within your IDE while it's running in Docker, add this to your `mcpServers` configuration:
 
 ```json
 {
-    "mcpServers": {
-        "mybrain": {
-            "command": "python",
-            "args": [
-                "/ABSOLUTE/PATH/TO/mybrain/server.py"
-            ]
-        }
+  "mcpServers": {
+    "mybrain": {
+      "command": "docker",
+      "args": ["exec", "-i", "mybrain-mcp", "python", "server.py"],
+      "env": {
+        "MYBRAIN_DATA_DIR": "/data/mybrain"
+      }
     }
+  }
 }
 ```
 
-> [!WARNING]
-> **Ensure you replace the example path with the real path of the `mybrain` folder on your disk (use `/` or `\\` on Windows).**
-
 ---
 
-### C. Project Onboarding (Recommended)
-To perform a complete onboarding of a new project into **myBrAIn**, copy and paste the following prompt into your chat with Antigravity/Cursor. This ensures the brain is correctly initialized with the project's tech stack, architecture, and coding style.
+## 🚀 Project Onboarding & Context
 
-> **Note:** Ensure you have already configured the MCP server in your JSON settings as described in step B.
+**myBrAIn** is specifically designed to handle "Project Onboarding" — a process where the AI analyzes your current codebase and stores its architectural DNA, coding patterns, and constraints in its persistent memory.
 
-**Copy-Paste Template:**
-```text
-Activate the mybrain MCP server.
-I want to perform a full onboarding of this project into your long-term memory.
+### How to Onboard a New Project
+Once you have the MCP server configured in your IDE, simply use the following prompt to let **myBrAIn** index your project:
 
-Perform these steps sequentially:
+> "I want to perform a full onboarding of this project into your long-term memory. Sequentially perform: Structural Link, Stack Analysis, Architectural Analysis, Style Analysis, and Exclusion Analysis."
 
-1. Structural Link  
-   Call initialize_workbase on the current directory (use the absolute path).
-
-2. Stack Analysis  
-   Read dependency files (requirements.txt, pyproject.toml, or package.json).  
-   Identify the main technologies and save them using store_insight with category="tech_stack".
-
-3. Architectural Analysis  
-   Read the 2-3 main core logic files.  
-   Deduce the architecture (e.g., MVC, Clean Architecture, Repository Pattern).  
-   Save the architectural rules using store_insight with category="architecture".  
-   Specify whether the rules are Observed or Declared.
-
-4. Style Analysis  
-   Analyze comments, naming, error handling, and function structure.  
-   Save preferences with store_insight and category="coding_style".  
-   Specify whether they are Observed or Declared.
-
-5. Exclusion Analysis  
-   Identify patterns or technologies commonly used but absent in this project.  
-   Save this information as constraints with category="constraints".
-
-Upon completion:
-- Confirm completion.
-- Show a structured summary of the saved memories (by category).
-- Indicate the workbase_id used.
-```
-
----
-
-## MCP Features (Tools)
-Once configured, Antigravity will have access to the following tools:
-
-*   `initialize_workbase`: Analyzes and indexes the current working directory.
-*   `store_insight`: Stores a new rule or discovery (includes automatic conflict detection).
-*   `recall_context`: Retrieves the most relevant information based on the current query.
-*   `critique_code`: Analyzes a code snippet by comparing it against stored style and architecture rules.
+### Available Tools
+- `initialize_workbase`: Link a directory to the brain.
+- `store_insight`: Manually save a rule or context.
+- `recall_context`: Retrieve relevant memories for the current task.
+- `critique_code`: Validate code against stored architectural rules.
 
 ---
 

@@ -1,21 +1,24 @@
+import os
 from pathlib import Path
 
 # Single source of truth for configuration
-BASE_DATA_DIR = Path("~/mybrain_data").expanduser().resolve()
-CHROMA_COLLECTION = "mybrain_memory"
-EMBEDDING_MODEL = "all-MiniLM-L6-v2"
+# All settings can be overridden via environment variables
+
+BASE_DATA_DIR = Path(os.getenv("MYBRAIN_DATA_DIR", "~/mybrain_data")).expanduser().resolve()
+CHROMA_COLLECTION = os.getenv("MYBRAIN_COLLECTION", "mybrain_memory")
+EMBEDDING_MODEL = os.getenv("MYBRAIN_EMBEDDING_MODEL", "all-MiniLM-L6-v2")
 
 DB_SCHEMA_VERSION = 1
 
-DB_LOCK_RETRY_SECONDS = 2
-DB_LOCK_RETRY_INTERVAL = 0.1
+DB_LOCK_RETRY_SECONDS = float(os.getenv("MYBRAIN_LOCK_RETRY_SECONDS", "2"))
+DB_LOCK_RETRY_INTERVAL = float(os.getenv("MYBRAIN_LOCK_RETRY_INTERVAL", "0.1"))
 
-MAX_TREE_LINES = 200
-MAX_FILE_SIZE_BYTES = 1_000_000
-MAX_STYLE_SAMPLE_FILES = 3
+MAX_TREE_LINES = int(os.getenv("MYBRAIN_MAX_TREE_LINES", "200"))
+MAX_FILE_SIZE_BYTES = int(os.getenv("MYBRAIN_MAX_FILE_SIZE", "1000000"))
+MAX_STYLE_SAMPLE_FILES = int(os.getenv("MYBRAIN_MAX_STYLE_SAMPLES", "3"))
 
 # Vector search threshold for semantic conflict detection (lower distance = higher similarity)
-CONFLICT_DISTANCE_THRESHOLD = 0.5  # cosine distance
+CONFLICT_DISTANCE_THRESHOLD = float(os.getenv("MYBRAIN_CONFLICT_THRESHOLD", "0.5"))
 
 IGNORED_DIRS = {
     "node_modules", ".git", "__pycache__", "venv", ".env",
