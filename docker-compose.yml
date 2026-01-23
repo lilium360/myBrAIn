@@ -24,6 +24,8 @@ services:
   mcp-server:
     build: .
     container_name: mybrain-mcp
+    healthcheck:
+      test: [ "NONE" ]
     volumes:
       - mybrain_data:/data/mybrain
     environment:

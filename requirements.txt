@@ -1,6 +1,16 @@
-mcp
-chromadb
-sentence-transformers
-streamlit
-pathspec
-tenacity
+# Core MCP dependencies
+mcp>=1.0.0,<2.0.0
+
+# Vector database
+chromadb>=0.4.0,<1.0.0
+
+# Embeddings
+sentence-transformers>=2.2.0,<3.0.0
+
+# Admin UI
+streamlit>=1.28.0,<2.0.0
+pandas>=2.0.0,<3.0.0
+
+# Utilities
+pathspec>=0.11.0,<1.0.0
+tenacity>=8.2.0,<9.0.0
