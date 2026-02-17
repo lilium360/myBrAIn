@@ -20,7 +20,7 @@
 The system is divided into three main components:
 *   **Core**: Manages persistence (`db.py`) and analytical intelligence (`analyzer.py`) for extracting insights from code.
 *   **Server**: The standard MCP interface (`server.py`) that allows Antigravity to interact with the brain.
-*   **Admin UI**: An intuitive dashboard (`admin.py`) based on Streamlit to visualize, manage, and debug stored memories.
+*   **Admin UI**: A premium dashboard (`admin.py`) based on Streamlit to visualize, manage, and debug stored memories with advanced features like **Card Views**, **Bulk Actions**, and **Knowledge Graphs**.
 
 ---
 
@@ -118,7 +118,18 @@ You can customize the system behavior via environment variables (in Docker) or b
 
 ---
 
+---
+
+## 🗂️ Admin Dashboard Features (v1.1)
+The refactored Admin Dashboard includes:
+- **Card-Based Explorer**: Browse memories in a modernized grid with colored tags for rules, context, and constraints.
+- **Knowledge Graph**: Interactively visualize the semantic relationships and categorical clusters of your brain.
+- **Bulk Operations**: Select multiple records for simultaneous deletion or quick editing.
+- **Workbase Management**: Securely manage project data with a confirmation-protected destruction mechanism.
+
+---
+
 ## Roadmap & Limitations
 *   **Core v1**: Focused on vector persistence and code analysis.
-*   **Graph Visualization**: (Planned) Visualization of relationships between insights.
-*   **Vector-Based Conflict Detection**: Identified potentially contradictory insights.
+*   **Vector-Based Conflict Detection**: Identifies potentially contradictory insights.
+*   **Graph Exploration**: Interactive visualization of semantic links (Implemented).
