@@ -164,7 +164,7 @@ with st.sidebar:
     st.image("https://img.icons8.com/parakeet/96/brain.png", width=60)
     st.title("myBrAIn Admin")
     
-    if st.button("🔄 Refresh Data", use_container_width=True, type="secondary"):
+    if st.button("🔄 Refresh Data", width="stretch", type="secondary"):
         st.cache_resource.clear()
         st.rerun()
 
@@ -253,7 +253,7 @@ with st.sidebar:
             data=export_json,
             file_name=f"brain_dump_{'full' if not target_export_id else 'wb'}_{timestamp}.json",
             mime="application/json",
-            use_container_width=True
+            width="stretch"
         )
         
         # IMPORT
@@ -266,7 +266,7 @@ with st.sidebar:
                 help="If checked, all memories in the JSON will be reassigned to the currently selected workbase."
             )
             
-            if st.button("🚀 Execute Import", use_container_width=True, type="primary"):
+            if st.button("🚀 Execute Import", width="stretch", type="primary"):
                 try:
                     # Force clear cache before import to ensure latest class signature from db.py is used
                     st.cache_resource.clear()
@@ -292,7 +292,7 @@ with st.sidebar:
             target_wb = st.selectbox("Select Workbase to Destroy", ["None"] + sorted(list(wb_options.keys())))
             if target_wb != "None":
                 wb_id_to_del = wb_options[target_wb]
-                if st.button(f"🔥 DESTROY {target_wb}", type="primary", use_container_width=True):
+                if st.button(f"🔥 DESTROY {target_wb}", type="primary", width="stretch"):
                     # Confirmation via Text Input
                     st.session_state.confirm_delete = True
                 
@@ -400,7 +400,7 @@ if not df.empty:
                 "type": st.column_config.SelectboxColumn("Type", options=["rule", "context", "constraint"]),
             },
             hide_index=True,
-            use_container_width=True,
+            width="stretch",
             key="bulk_editor"
         )
         

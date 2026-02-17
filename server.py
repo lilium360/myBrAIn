@@ -17,11 +17,27 @@ mcp = FastMCP("myBrAIn")
 db = BrainDB()
 analyzer = ProjectAnalyzer()
 
-def get_workbase_id(root_path: Path) -> str:
-    """Generate a deterministic hash for a path (cross-platform safe)."""
-    # Use lowercase for hash calculation to be case-insensitive
-    normalized = str(root_path).lower()
-    return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
+# Shared state: tracks the workbase the user is currently interacting with.
+# The SilentObserver reads this to know which project to scan.
+active_workbase = {"workbase_id": None, "root_path": None, "project_name": None}
+
+def _set_active_workbase(workbase_id: str, root_path: str = None, project_name: str = None):
+    """Update the active workbase reference. Called by every tool."""
+    active_workbase["workbase_id"] = workbase_id
+    if root_path:
+        active_workbase["root_path"] = root_path
+    if project_name:
+        active_workbase["project_name"] = project_name
+    # If we don't have root_path yet, try to look it up from DB context
+    if not active_workbase["root_path"]:
+        try:
+            ctx = db.collection.get(ids=[f"context_{workbase_id}"])
+            if ctx["metadatas"]:
+                active_workbase["root_path"] = ctx["metadatas"][0].get("root_path", "")
+                active_workbase["project_name"] = ctx["metadatas"][0].get("project_name", "")
+        except Exception:
+            pass
+    print(f"ACTIVE_WORKBASE: {active_workbase.get('project_name', '?')}", file=sys.stderr)
 
 @mcp.tool()
 def initialize_workbase(root_path: str) -> dict:
@@ -31,7 +47,7 @@ def initialize_workbase(root_path: str) -> dict:
     """
     try:
         path = analyzer.normalize_path(root_path)
-        workbase_id = get_workbase_id(path)
+        workbase_id = analyzer.get_workbase_id(path)
         
         # Analyze project
         structure = analyzer.scan_structure(path)
@@ -41,6 +57,7 @@ def initialize_workbase(root_path: str) -> dict:
         metadata = {
             "workbase_id": workbase_id,
             "project_name": path.name,
+            "root_path": str(path),
             "type": "context",
             "category": "project_structure",
             "source": "agent"
@@ -52,6 +69,9 @@ def initialize_workbase(root_path: str) -> dict:
             text=f"Structure:\n{structure}\n\nStyle:\n{json.dumps(style)}",
             metadata=metadata
         )
+        
+        # Set as active workbase
+        _set_active_workbase(workbase_id, root_path=str(path), project_name=path.name)
         
         return {
             "workbase_id": workbase_id,
@@ -70,6 +90,9 @@ def store_insight(content: str, category: str, workbase_id: str, force: bool = F
     If replace_id is provided, it deletes that memory before storing the new one (Atomic Update).
     """
     try:
+        # Normalize workbase_id to hash
+        workbase_id = analyzer.get_workbase_id(workbase_id)
+        _set_active_workbase(workbase_id)
         # If explicit replacement is requested
         if replace_id:
             try:
@@ -122,6 +145,9 @@ def recall_context(query: str, workbase_id: str) -> dict:
     Retrieve relevant project rules and context for a query.
     """
     try:
+        # Normalize workbase_id to hash
+        workbase_id = analyzer.get_workbase_id(workbase_id)
+        _set_active_workbase(workbase_id)
         results = db.search(query, workbase_id, limit=5)
         
         memories = []
@@ -145,6 +171,9 @@ def critique_code(code_snippet: str, workbase_id: str) -> dict:
     Analyze a code snippet against stored project rules.
     """
     try:
+        # Normalize workbase_id to hash
+        workbase_id = analyzer.get_workbase_id(workbase_id)
+        _set_active_workbase(workbase_id)
         # In a real scenario, this would involve LLM reasoning.
         # For Core v1, we perform semantic search to find relevant rules.
         relevant_rules = db.search(code_snippet, workbase_id, limit=3, category=None)
@@ -173,7 +202,8 @@ def audit_codebase(directory_path: Optional[str] = None) -> dict:
     """
     try:
         root = analyzer.normalize_path(directory_path or ".")
-        workbase_id = get_workbase_id(root)
+        workbase_id = analyzer.get_workbase_id(root)
+        _set_active_workbase(workbase_id, root_path=str(root))
         
         # Retrieve architecture and constraint rules
         all_rules = db.get_rules(workbase_id)
@@ -217,8 +247,8 @@ if __name__ == "__main__":
     from core.observer import SilentObserver
     from core import config
     
-    # Start the Silent Observer background thread
-    observer = SilentObserver(data_dir=config.BASE_DATA_DIR)
+    # Start the Silent Observer background thread, sharing the active_workbase reference
+    observer = SilentObserver(data_dir=config.BASE_DATA_DIR, active_workbase=active_workbase)
     observer.start()
     
     # Ensure stdout is never used for logs

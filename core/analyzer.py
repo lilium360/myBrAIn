@@ -1,6 +1,7 @@
 import os
+import hashlib
 from pathlib import Path
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional, Union
 import collections
 
 from core import config
@@ -18,6 +19,29 @@ class ProjectAnalyzer:
         if not p.is_dir():
             raise ValueError(f"Path is not a directory: {p}")
         return p
+
+    def get_workbase_id(self, root_input: Union[Path, str]) -> str:
+        """
+        Generate a deterministic hash for a path or string (cross-platform safe).
+        If the input is already a valid SHA256 hex string, it is returned as-is.
+        """
+        raw_input = str(root_input).strip()
+        
+        # 1. If it's already a SHA256 hash, return it
+        if len(raw_input) == 64 and all(c in "0123456789abcdef" for c in raw_input.lower()):
+            return raw_input.lower()
+            
+        # 2. Try to treat it as a path and normalize it
+        try:
+            p = Path(raw_input).expanduser().resolve()
+            # We don't strictly require existence here to keep it deterministic for potential future paths,
+            # but normalization is key.
+            normalized = str(p).lower()
+        except Exception:
+            # 3. Fallback for strings that aren't valid paths on this OS
+            normalized = raw_input.lower()
+            
+        return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
 
     def scan_structure(self, root_path: Path) -> str:
         """Generate a deterministic text-based tree of the project structure."""

@@ -10,7 +10,7 @@ from core.db import BrainDB
 from core.analyzer import ProjectAnalyzer
 
 class SilentObserver(threading.Thread):
-    def __init__(self, data_dir: Path, interval: int = 300):
+    def __init__(self, data_dir: Path, active_workbase: dict = None, interval: int = 300):
         super().__init__()
         self.data_dir = data_dir
         self.interval = interval
@@ -20,6 +20,7 @@ class SilentObserver(threading.Thread):
         
         self.db = None # Lazy init to avoid issues with thread affinity if any
         self.analyzer = ProjectAnalyzer()
+        self.active_workbase = active_workbase or {}
         
         # Initial state
         self.state = {
@@ -74,26 +75,40 @@ class SilentObserver(threading.Thread):
     def _perform_scan(self):
         self._log("Starting codebase scan...")
         
-        # In a real scenario, we would iterate over workbases
-        # For now, we use the current directory as a proxy for the primary workbase
-        root = Path(".").resolve()
+        # Read the active workbase set by MCP tools
+        wb_id = self.active_workbase.get("workbase_id")
+        root_path_str = self.active_workbase.get("root_path", "")
+        project_name = self.active_workbase.get("project_name", "Unknown")
         
-        # Retrieve rules
-        # We need a way to get workbase_id without interactive user context
-        # Heuristic: search for directories that have been initialized in DB
-        # For simplicity, we'll scan the root and use its ID if it exists
-        workbase_id = str(root)
-        rules = self.db.get_rules(workbase_id)
-        
-        if not rules:
-            self._log("No architectural rules found. Skipping scan.")
+        if not wb_id:
+            self._log("No active workbase yet. Waiting for first tool call.")
             self.state["drift_detected"] = False
             return
-
+        
+        if not root_path_str:
+            self._log(f"Active workbase '{project_name}' has no root_path. Skipping.")
+            self.state["drift_detected"] = False
+            return
+        
+        root = Path(root_path_str)
+        if not root.exists() or not root.is_dir():
+            self._log(f"Path for '{project_name}' not accessible. Skipping.")
+            self.state["drift_detected"] = False
+            return
+        
+        # Retrieve rules for the active workbase
+        rules = self.db.get_rules(wb_id)
+        
+        if not rules:
+            self._log(f"No rules for '{project_name}'. Skipping.")
+            self.state["drift_detected"] = False
+            return
+        
+        self._log(f"Scanning '{project_name}' ({len(rules)} rules)...")
+        
         drifts_found = 0
         files_checked = 0
         
-        # Scan files
         for p in root.rglob("*"):
             if self.stop_event.is_set(): return
             
@@ -106,11 +121,11 @@ class SilentObserver(threading.Thread):
                 if drifts:
                     drifts_found += len(drifts)
                     for d in drifts:
-                        self._log(f"Drift detected in {p.name}: {d['drift_type']}")
+                        self._log(f"Drift in {project_name}/{p.name}: {d['drift_type']}")
         
         self.state["checked_files"] = files_checked
         self.state["drift_detected"] = drifts_found > 0
-        self._log(f"Scan complete. Checked {files_checked} files. Found {drifts_found} drifts.")
+        self._log(f"Scan complete. {files_checked} files, {drifts_found} drifts.")
 
     def stop(self):
         self.stop_event.set()

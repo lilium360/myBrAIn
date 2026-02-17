@@ -194,6 +194,27 @@ class BrainDB:
         wait=wait_fixed(config.DB_LOCK_RETRY_INTERVAL),
         retry=retry_if_exception_type(sqlite3.OperationalError)
     )
+    def get_known_workbases(self) -> List[Dict[str, str]]:
+        """Retrieve all unique workbase IDs with project names and root paths."""
+        results = self.collection.get(where={"type": "context"})
+        workbases = {}
+        if results["ids"]:
+            for i in range(len(results["ids"])):
+                meta = results["metadatas"][i]
+                wb_id = meta.get("workbase_id")
+                if wb_id and wb_id not in workbases:
+                    workbases[wb_id] = {
+                        "workbase_id": wb_id,
+                        "project_name": meta.get("project_name", "Unknown"),
+                        "root_path": meta.get("root_path", "")
+                    }
+        return list(workbases.values())
+
+    @retry(
+        stop=stop_after_delay(config.DB_LOCK_RETRY_SECONDS),
+        wait=wait_fixed(config.DB_LOCK_RETRY_INTERVAL),
+        retry=retry_if_exception_type(sqlite3.OperationalError)
+    )
     def get_rules(self, workbase_id: Optional[str] = None) -> List[Dict[str, Any]]:
         """Retrieve all rules for a specific workbase (or all if None)."""
         where = {"type": "rule"}
