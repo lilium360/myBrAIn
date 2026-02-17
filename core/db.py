@@ -125,16 +125,82 @@ class BrainDB:
         wait=wait_fixed(config.DB_LOCK_RETRY_INTERVAL),
         retry=retry_if_exception_type(sqlite3.OperationalError)
     )
-    def get_rules(self, workbase_id: str) -> List[Dict[str, Any]]:
-        """Retrieve all rules for a specific workbase."""
-        results = self.collection.get(
-            where={
-                "$and": [
-                    {"workbase_id": workbase_id},
-                    {"type": "rule"}
-                ]
-            }
+    def export_memory_to_json(self, workbase_id: Optional[str] = None) -> str:
+        """Export memories (optionally filtered by workbase_id) to a JSON string."""
+        import json
+        if workbase_id:
+            results = self.collection.get(where={"workbase_id": workbase_id})
+        else:
+            results = self.collection.get()
+            
+        export_data = []
+        if results["ids"]:
+            for i in range(len(results["ids"])):
+                export_data.append({
+                    "id": results["ids"][i],
+                    "document": results["documents"][i],
+                    "metadata": results["metadatas"][i]
+                })
+        return json.dumps(export_data, indent=2)
+
+    @retry(
+        stop=stop_after_delay(config.DB_LOCK_RETRY_SECONDS),
+        wait=wait_fixed(config.DB_LOCK_RETRY_INTERVAL),
+        retry=retry_if_exception_type(sqlite3.OperationalError)
+    )
+    def import_memory_from_json(self, json_data: str, target_workbase_id: Optional[str] = None, target_project_name: Optional[str] = None) -> int:
+        """
+        Import memories from a JSON string.
+        If target_workbase_id is provided, all imported memories will be reassigned to this workbase.
+        """
+        import json
+        data = json.loads(json_data)
+        if not isinstance(data, list):
+            raise ValueError("Invalid JSON format: expected a list of memories.")
+        
+        final_ids = []
+        final_docs = []
+        final_metadatas = []
+
+        for item in data:
+            doc = item["document"]
+            meta = item["metadata"]
+            
+            if target_workbase_id:
+                meta["workbase_id"] = target_workbase_id
+                if target_project_name:
+                    meta["project_name"] = target_project_name
+                
+                # Regenerate ID if it follows the pattern type_wb_hash to avoid cross-wb collisions or ghosting
+                content_hash = hashlib.md5(doc.encode("utf-8")).hexdigest()
+                m_type = meta.get("type", "context")
+                item_id = f"{m_type}_{target_workbase_id}_{content_hash}"
+            else:
+                item_id = item["id"]
+
+            final_ids.append(item_id)
+            final_docs.append(doc)
+            final_metadatas.append(meta)
+
+        self.collection.upsert(
+            ids=final_ids,
+            documents=final_docs,
+            metadatas=final_metadatas
         )
+        return len(final_ids)
+
+    @retry(
+        stop=stop_after_delay(config.DB_LOCK_RETRY_SECONDS),
+        wait=wait_fixed(config.DB_LOCK_RETRY_INTERVAL),
+        retry=retry_if_exception_type(sqlite3.OperationalError)
+    )
+    def get_rules(self, workbase_id: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Retrieve all rules for a specific workbase (or all if None)."""
+        where = {"type": "rule"}
+        if workbase_id:
+            where = {"$and": [{"workbase_id": workbase_id}, {"type": "rule"}]}
+            
+        results = self.collection.get(where=where)
         
         memories = []
         for i in range(len(results["ids"])):

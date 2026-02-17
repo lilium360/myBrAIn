@@ -165,7 +165,62 @@ def critique_code(code_snippet: str, workbase_id: str) -> dict:
         print(f"Error critiquing code: {e}", file=sys.stderr)
         return {"status": "error", "message": str(e)}
 
+@mcp.tool()
+def audit_codebase(directory_path: Optional[str] = None) -> dict:
+    """
+    Scan the codebase for architectural drift against stored memories.
+    Identifies contradictions and suggests self-healing updates.
+    """
+    try:
+        root = analyzer.normalize_path(directory_path or ".")
+        workbase_id = get_workbase_id(root)
+        
+        # Retrieve architecture and constraint rules
+        all_rules = db.get_rules(workbase_id)
+        architectural_rules = [
+            r for r in all_rules 
+            if r["metadata"].get("category") in ["architecture", "constraints", "coding_style"]
+        ]
+        
+        if not architectural_rules:
+            return {"status": "info", "message": "No architectural rules found for this workbase."}
+            
+        drifts = []
+        # Scan files (limited to relevant extensions)
+        for p in root.rglob("*"):
+            if p.is_file() and p.suffix.lower() in [".py", ".js", ".ts", ".go", ".rs"]:
+                if any(ignored in p.parts for ignored in analyzer.ignored_dirs):
+                    continue
+                
+                file_drifts = analyzer.detect_memory_drift(p, architectural_rules)
+                drifts.extend(file_drifts)
+        
+        report = []
+        for d in drifts:
+            report.append(f"DRIFT in `{d['file']}`: Rule '{d['rule_text']}' violated. Evidence: {d['evidence']}")
+            
+        summary = "No drift detected."
+        if drifts:
+            summary = f"Detected {len(drifts)} architectural drifts."
+            
+        return {
+            "status": "success",
+            "summary": summary,
+            "drifts": drifts,
+            "report": "\n".join(report)
+        }
+    except Exception as e:
+        print(f"Error auditing codebase: {e}", file=sys.stderr)
+        return {"status": "error", "message": str(e)}
+
 if __name__ == "__main__":
+    from core.observer import SilentObserver
+    from core import config
+    
+    # Start the Silent Observer background thread
+    observer = SilentObserver(data_dir=config.BASE_DATA_DIR)
+    observer.start()
+    
     # Ensure stdout is never used for logs
     # FastMCP handles this internally, but we enforce it just in case.
     mcp.run()

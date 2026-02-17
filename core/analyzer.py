@@ -132,3 +132,39 @@ class ProjectAnalyzer:
             "indentation": indentation,
             "naming": naming
         }
+
+    def detect_memory_drift(self, file_path: Path, existing_rules: List[Dict]) -> List[Dict]:
+        """ Compare file content against existing architectural rules to detect drift. """
+        drifts = []
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                content = f.read()
+            
+            for rule in existing_rules:
+                rule_text = rule["text"].lower()
+                # Simple drift detection heuristic:
+                # If rule says "use X" and file uses "Y", or rule is a constraint
+                
+                # Example: Naming convention drift
+                if "naming" in rule.get("metadata", {}).get("category", "").lower():
+                    if "snake_case" in rule_text and not "_" in content and any(c.isupper() for c in content):
+                        drifts.append({
+                            "rule_id": rule["id"],
+                            "rule_text": rule["text"],
+                            "file": str(file_path),
+                            "drift_type": "naming_convention",
+                            "evidence": "Found CamelCase/PascalCase in a snake_case restricted project."
+                        })
+                
+                # Generic pattern detection (e.g., "no print", "use logging")
+                if "no print" in rule_text and "print(" in content:
+                    drifts.append({
+                        "rule_id": rule["id"],
+                        "rule_text": rule["text"],
+                        "file": str(file_path),
+                        "drift_type": "forbidden_pattern",
+                        "evidence": "Found 'print()' statement contrary to architectural rule."
+                    })
+        except Exception:
+            pass
+        return drifts

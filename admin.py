@@ -185,11 +185,107 @@ with st.sidebar:
         category_filter = st.multiselect("Category", categories)
 
     st.divider()
+
+    # --- Silent Observer Sidebar Section ---
+    st.header("🕵️ Silent Observer")
+    observer_state_path = config.BASE_DATA_DIR / "observer_state.json"
+    
+    if observer_state_path.exists():
+        try:
+            with open(observer_state_path, "r") as f:
+                obs_state = json.load(f)
+            
+            status = obs_state.get("status", "Unknown")
+            status_map = {
+                "Running": "🟢 Running",
+                "Sleeping": "🟡 Sleeping",
+                "Error": "🔴 Error",
+                "Starting": "⚪ Starting"
+            }
+            st.write(f"**Status:** {status_map.get(status, status)}")
+            
+            last_run = obs_state.get("last_run", "Never")
+            if last_run != "Never":
+                last_run_dt = datetime.datetime.fromisoformat(last_run)
+                st.caption(f"Last Scan: {last_run_dt.strftime('%H:%M:%S')}")
+            
+            st.write(f"Files Checked: `{obs_state.get('checked_files', 0)}`")
+            
+            if obs_state.get("drift_detected"):
+                st.warning("⚠️ Codebase Drift Detected!")
+            
+            with st.expander("Recent Activity", expanded=False):
+                for log in obs_state.get("logs", []):
+                    st.caption(log)
+                    
+        except json.JSONDecodeError:
+            st.caption("🔄 Syncing observer state...")
+        except Exception as e:
+            st.error(f"Observer Error: {e}")
+    else:
+        st.info("Observer not active. Start MCP server to activate.")
+
+    st.divider()
     
     with st.expander("⚙️ System Settings", expanded=False):
         st.caption(f"**DB:** {config.BASE_DATA_DIR.name}")
         st.caption(f"**Model:** {config.EMBEDDING_MODEL.split('/')[-1]}")
         
+        st.write("---")
+        st.subheader("💾 Memory Management")
+        
+        # EXPORT OPTIONS
+        export_mode = st.radio("Export Mode", ["Full DB", "Selected Workbase"], label_visibility="collapsed")
+        
+        target_export_id = None
+        export_label = "📤 Export Full Brain"
+        if export_mode == "Selected Workbase" and workbase_filter != "All":
+            target_export_id = workbase_filter
+            export_label = f"📤 Export {selected_display.split(' (')[0]}"
+        elif export_mode == "Selected Workbase":
+            st.info("Select a workbase from the filter above to export specifically.")
+        
+        timestamp = datetime.datetime.now().isoformat().replace(":", "-").replace(".", "-")
+        export_json = db.export_memory_to_json(workbase_id=target_export_id)
+        
+        st.download_button(
+            label=export_label,
+            data=export_json,
+            file_name=f"brain_dump_{'full' if not target_export_id else 'wb'}_{timestamp}.json",
+            mime="application/json",
+            use_container_width=True
+        )
+        
+        # IMPORT
+        uploaded_file = st.file_uploader("📥 Import Brain Dump", type=["json"])
+        if uploaded_file is not None:
+            import_into_current = st.checkbox(
+                f"Import into: {selected_display.split(' (')[0]}", 
+                value=False,
+                disabled=(workbase_filter == "All"),
+                help="If checked, all memories in the JSON will be reassigned to the currently selected workbase."
+            )
+            
+            if st.button("🚀 Execute Import", use_container_width=True, type="primary"):
+                try:
+                    # Force clear cache before import to ensure latest class signature from db.py is used
+                    st.cache_resource.clear()
+                    import_data = uploaded_file.getvalue().decode("utf-8")
+                    
+                    target_id = workbase_filter if import_into_current else None
+                    target_name = selected_display.split(' (')[0] if import_into_current else None
+                    
+                    count = db.import_memory_from_json(
+                        import_data, 
+                        target_workbase_id=target_id,
+                        target_project_name=target_name
+                    )
+                    st.success(f"Successfully imported {count} memories!")
+                    st.cache_resource.clear()
+                    # st.rerun()
+                except Exception as e:
+                    st.error(f"Import failed: {e}")
+
         st.write("---")
         st.warning("Danger Zone")
         if st.checkbox("Enable Workbase Destruction"):
